@@ -89,7 +89,6 @@ async function run() {
 
             const existingUser = await userCollection.findOne(query)
             if (existingUser) {
-                console.log(existingUser);
                 return res.send({ message: 'user already exist' })
             }
             const result = await userCollection.insertOne(user);
@@ -130,6 +129,20 @@ async function run() {
         app.get('/menu', async (req, res) => {
             const result = await menuCollection.find().toArray();
             res.send(result);
+        })
+
+        app.post('/menu', verifyJWT, verifyAdmin, async(req, res)=>{
+            const menu = req.body;
+            const result = await menuCollection.insertOne(menu);
+            res.send(result)
+        })
+
+        app.delete('/menu/:id', verifyJWT, verifyAdmin, async(req, res)=>{
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)}
+            const result = await menuCollection.deleteOne(query);
+            res.send(result);
+    
         })
 
         // review related API
