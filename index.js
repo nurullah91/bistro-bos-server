@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_PAYMENT_SECRET_KEY);
 const cors = require('cors');
 const port = process.env.PORT || 5000;
 const jwt = require('jsonwebtoken');
@@ -51,12 +52,13 @@ async function run() {
         const menuCollection = client.db("bistroDB").collection("menu");
         const reviewsCollection = client.db("bistroDB").collection("reviews");
         const cartCollection = client.db("bistroDB").collection("cart");
+        const paymentCollection = client.db("bistroDB").collection("payment");
 
 
 
         app.post('/jwt', (req, res)=>{
             const user = req.body;
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1h" } )
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1d" } )
             res.send({token});
         })
 
@@ -185,6 +187,27 @@ async function run() {
             res.send(result);
         })
 
+
+        // crate payment intent 
+        app.post('/create-payment-intent', verifyJWT,  async(req, res)=>{
+            const {price} = req.body;
+            const amount = price * 100; 
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            })
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+
+        // payment related api
+        app.post('/payment', async( req, res)=>{
+            const payment = req.body;
+            const result = await paymentCollection.insertOne(payment);
+            res.send(result);
+        })
 
 
 
