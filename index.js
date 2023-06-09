@@ -172,6 +172,24 @@ async function run() {
 
         })
 
+        // admin stats
+        app.get('/admin-stats',verifyJWT, verifyAdmin, async(req, res)=>{
+            const users = await userCollection.estimatedDocumentCount();
+            const menuItems = await menuCollection.estimatedDocumentCount();
+            const orders = await paymentCollection.estimatedDocumentCount();
+
+            const payments = await paymentCollection.find().toArray();
+            const revenue = payments.reduce( (sum, payment)=>sum + payment.price, 0);
+
+            res.send({
+                revenue,
+                users,
+                menuItems,
+                orders
+            })
+
+        })
+
         app.post('/carts', async (req, res) => {
             const item = req.body;
             const result = await cartCollection.insertOne(item);
@@ -191,7 +209,7 @@ async function run() {
         // crate payment intent 
         app.post('/create-payment-intent', verifyJWT,  async(req, res)=>{
             const {price} = req.body;
-            const amount = price * 100; 
+            const amount = parseInt(price * 100); 
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: 'usd',
@@ -203,7 +221,7 @@ async function run() {
         })
 
         // payment related api
-        app.post('/payment', async( req, res)=>{
+        app.post('/payment', verifyJWT, async( req, res)=>{
             const payment = req.body;
             const result = await paymentCollection.insertOne(payment);
             res.send(result);
