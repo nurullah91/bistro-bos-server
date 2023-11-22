@@ -13,18 +13,18 @@ app.use(cors());
 app.use(express.json());
 
 
-const verifyJWT = (req, res, next)=>{
+const verifyJWT = (req, res, next) => {
     const authorization = req.headers.authorization;
 
-    if(!authorization){
-        return res.status(401).send({error: true, message: 'unauthorized access'})
+    if (!authorization) {
+        return res.status(401).send({ error: true, message: 'unauthorized access' })
     }
 
     // barer token
     const token = authorization.split(' ')[1];
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded)=>{
-        if(err){
-            return res.status(401).send({error:true, message: "Unauthorized token"})
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ error: true, message: "Unauthorized token" })
         }
         req.decoded = decoded;
         next();
@@ -56,27 +56,27 @@ async function run() {
 
 
 
-        app.post('/jwt', (req, res)=>{
+        app.post('/jwt', (req, res) => {
             const user = req.body;
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1d" } )
-            res.send({token});
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1d" })
+            res.send({ token });
         })
 
         // user related API 
 
-        const verifyAdmin = async (req, res, next) =>{
+        const verifyAdmin = async (req, res, next) => {
             const email = req.decoded.email;
-            const query = {email:email};
+            const query = { email: email };
             const user = await userCollection.findOne(query);
-            if(user?.role !== 'admin'){
-                return res.status(403).send({error: true, message: 'forbidden access'})
+            if (user?.role !== 'admin') {
+                return res.status(403).send({ error: true, message: 'forbidden access' })
             }
             next();
         }
 
 
-        
-        app.get('/users', verifyJWT, verifyAdmin,  async (req, res) => {
+
+        app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result)
         })
@@ -97,24 +97,27 @@ async function run() {
             res.send(result);
         })
 
-        app.get('/users/admin/:email', verifyJWT, async(req, res)=>{
+
+        // getting admin 
+        app.get('/users/admin/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
 
-            if(req.decoded.email !== email){
-                res.send({admin:false})
+            if (req.decoded.email !== email) {
+                res.send({ admin: false })
             }
 
-            const query = {email: email}
+            const query = { email: email }
             const user = await userCollection.findOne(query);
 
-            const result = {admin: user?.role === 'admin'};
+            const result = { admin: user?.role === 'admin' };
             res.send(result);
         })
 
 
-        app.patch('/users/admin/:id', async(req, res)=>{
+        // make admin
+        app.patch('/users/admin/:id', async (req, res) => {
             const id = req.params.id;
-            const filter = {_id: new ObjectId(id)};
+            const filter = { _id: new ObjectId(id) };
 
             const updatedDoc = {
                 $set: {
@@ -133,18 +136,18 @@ async function run() {
             res.send(result);
         })
 
-        app.post('/menu', verifyJWT, verifyAdmin, async(req, res)=>{
+        app.post('/menu', verifyJWT, verifyAdmin, async (req, res) => {
             const menu = req.body;
             const result = await menuCollection.insertOne(menu);
             res.send(result)
         })
 
-        app.delete('/menu/:id', verifyJWT, verifyAdmin, async(req, res)=>{
+        app.delete('/menu/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await menuCollection.deleteOne(query);
             res.send(result);
-    
+
         })
 
         // review related API
@@ -163,8 +166,8 @@ async function run() {
             }
 
             const decodedEmail = req.decoded.email;
-            if(email !== decodedEmail){
-                return res.status(403).send({error:true, message: "Forbidden access"})
+            if (email !== decodedEmail) {
+                return res.status(403).send({ error: true, message: "Forbidden access" })
             }
             const query = { email: email };
             const result = await cartCollection.find(query).toArray();
@@ -173,13 +176,13 @@ async function run() {
         })
 
         // admin stats
-        app.get('/admin-stats',verifyJWT, verifyAdmin, async(req, res)=>{
+        app.get('/admin-stats', verifyJWT, verifyAdmin, async (req, res) => {
             const users = await userCollection.estimatedDocumentCount();
             const menuItems = await menuCollection.estimatedDocumentCount();
             const orders = await paymentCollection.estimatedDocumentCount();
 
             const payments = await paymentCollection.find().toArray();
-            const revenue = payments.reduce( (sum, payment)=>sum + payment.price, 0);
+            const revenue = payments.reduce((sum, payment) => sum + payment.price, 0);
 
             res.send({
                 revenue,
@@ -207,9 +210,9 @@ async function run() {
 
 
         // crate payment intent 
-        app.post('/create-payment-intent', verifyJWT,  async(req, res)=>{
-            const {price} = req.body;
-            const amount = parseInt(price * 100); 
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: 'usd',
@@ -221,7 +224,7 @@ async function run() {
         })
 
         // payment related api
-        app.post('/payment', verifyJWT, async( req, res)=>{
+        app.post('/payment', verifyJWT, async (req, res) => {
             const payment = req.body;
             const result = await paymentCollection.insertOne(payment);
             res.send(result);
